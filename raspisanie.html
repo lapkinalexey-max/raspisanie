@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Расписание - Егор и Глеб</title>
+<style>
+  :root{
+    --bg:#eceef2;
+    --card:#fff;
+    --ink:#16202b;
+    --muted:#6b7480;
+    --line:#d8dbe1;
+    --egor:#2f6b4f;
+    --egor-soft:#e2efe8;
+    --gleb:#2b4c7e;
+    --gleb-soft:#e1e8f3;
+    --both:#8a4b0f;
+    --both-soft:#f7e9d6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:18px 12px 48px;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+  h2{font-family:Georgia,serif;font-weight:400;font-size:20px;margin:26px 0 10px}
+  .legend{display:flex;gap:16px;font-size:14px;color:var(--muted);margin-bottom:12px}
+  .legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .legend .e::before{background:var(--egor)}
+  .legend .g::before{background:var(--gleb)}
+
+  /* --- забирать --- */
+  .pickup{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .pickup-row{
+    display:grid;grid-template-columns:44px 1fr 1fr 1fr;align-items:center;
+    padding:10px 14px;border-top:1px solid #eef0f3;gap:8px;
+  }
+  .pickup-row:first-child{border-top:none;background:#f7f8fa;color:var(--muted);font-size:13px}
+  .pickup-row .d{font-family:Georgia,serif;font-size:17px}
+  .pickup-row .t{font-family:Georgia,serif;font-size:17px;font-variant-numeric:tabular-nums}
+  .pickup-row .t.e{color:var(--egor)}
+  .pickup-row .t.g{color:var(--gleb)}
+  .pickup-row .gap{font-size:13px;color:var(--muted)}
+  .pickup-row.same{background:var(--both-soft)}
+  .pickup-row.same .gap{color:var(--both);font-weight:600}
+  .pickup-row.today .d::after{content:"сегодня";display:block;font-family:inherit;font-size:10px;color:var(--muted);margin-top:-2px}
+
+  /* --- дни --- */
+  .chips{display:flex;gap:6px;margin:14px 0 12px}
+  .chip{
+    flex:1;padding:10px 4px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+    color:var(--muted);font:inherit;font-size:15px;cursor:pointer;
+  }
+  .chip[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .chip small{display:block;font-size:10px;opacity:.7}
+
+  /* --- таймлайн --- */
+  .tl{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px 16px 6px}
+  .tl-head{display:grid;grid-template-columns:44px 1fr 1fr;gap:8px;margin-bottom:8px;padding-left:2px}
+  .tl-head div{font-family:Georgia,serif;font-size:17px;text-align:center}
+  .tl-head .e{color:var(--egor)}
+  .tl-head .g{color:var(--gleb)}
+  .tl-body{position:relative;display:grid;grid-template-columns:44px 1fr 1fr;gap:8px}
+  .axis{position:relative}
+  .hour{
+    position:absolute;left:0;right:0;font-size:12px;color:var(--muted);
+    font-family:Georgia,serif;text-align:right;padding-right:6px;transform:translateY(-50%);
+  }
+  .hline{position:absolute;left:44px;right:0;border-top:1px dashed #e3e5ea;pointer-events:none}
+  .col{position:relative}
+  .lesson{
+    position:absolute;left:0;right:0;border-radius:8px;padding:5px 8px;
+    font-size:13px;line-height:1.25;overflow:hidden;
+    border-left:4px solid;
+  }
+  .lesson .n{font-family:Georgia,serif;font-size:11px;opacity:.7;display:block}
+  .col.e .lesson{background:var(--egor-soft);border-color:var(--egor);color:#1b3d2d}
+  .col.g .lesson{background:var(--gleb-soft);border-color:var(--gleb);color:#182c4a}
+  .lesson.extra{background:#f2f3f5 !important;border-color:#b9bec7 !important;color:var(--muted) !important;font-style:italic}
+  .end{
+    position:absolute;left:0;right:0;border-top:2px solid;
+    font-size:11px;font-family:Georgia,serif;
+  }
+  .end span{position:absolute;right:0;top:2px;padding:1px 6px;border-radius:6px;color:#fff}
+  .col.e .end{border-color:var(--egor)} .col.e .end span{background:var(--egor)}
+  .col.g .end{border-color:var(--gleb)} .col.g .end span{background:var(--gleb)}
+  .end.both{border-color:var(--both) !important}
+  .end.both span{background:var(--both) !important}
+  .day-view[hidden]{display:none}
+
+  /* --- звонки --- */
+  .bells{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .bell{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px}
+  .bell b{font-family:Georgia,serif;font-weight:400;color:var(--muted);margin-right:8px}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .chips,.legend{display:none}
+    .day-view[hidden]{display:block !important}
+    .day-view{page-break-inside:avoid;margin-bottom:16px}
+    .day-view::before{content:attr(data-title);display:block;font-family:Georgia,serif;font-size:18px;margin:12px 0 6px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Расписание уроков</h1>
+  <p class="sub">Егор и Глеб · сентябрь 2026</p>
+
+  <h2>Когда забирать</h2>
+  <div class="pickup" id="pickup"></div>
+
+  <h2>По дням</h2>
+  <div class="legend"><span class="e">Егор</span><span class="g">Глеб</span></div>
+  <div class="chips" role="tablist" id="chips"></div>
+  <div id="days"></div>
+
+  <h2>Звонки</h2>
+  <div class="bells" id="bells"></div>
+
+</div>
+
+<script>
+var bells = [
+  ["8.30","9.15"],["9.25","10.10"],["10.20","11.05"],["11.20","12.05"],
+  ["12.20","13.05"],["13.15","14.00"],["14.10","14.55"]
+];
+var days = ["Понедельник","Вторник","Среда","Четверг","Пятница"];
+var short = ["Пн","Вт","Ср","Чт","Пт"];
+
+var egor = [
+  ["Литературное чтение","Математика","Английский язык","Русский язык","Окружающий мир"],
+  ["Труд","Труд","Русский язык","Математика","Литературное чтение"],
+  ["Русский язык","Английский язык","Математика","Литературное чтение","Окружающий мир"],
+  ["Русский язык","Математика","Литературное чтение","ИЗО","ИЗО"],
+  ["Английский язык","Математика","Физкультура","Русский язык"]
+];
+var egorExtra = { 0: ["8.15","8.30","Разговор о важном"] };
+
+var gleb = [
+  ["Алгебра","Английский язык","Биология","Вероятность и статистика","Русский язык","Физика"],
+  ["История","Биология","Английский язык","Геометрия","Литература","Искусство"],
+  ["Английский язык","Русский язык","Физика","Русский язык","Информатика (ЦТТ)","Информатика (ЦТТ)"],
+  ["Русский язык","География","Литература","История","Алгебра","Английский язык","Физкультура"],
+  ["География","Русский язык","Геометрия","Алгебра","Английский язык","История","Физкультура"]
+];
+
+function min(t){ var p=t.split("."); return +p[0]*60 + +p[1]; }
+var T0 = min("8.00"), T1 = min("15.00"), PX = 1.5;
+function y(t){ return (min(t)-T0)*PX; }
+function endOf(list){ return bells[list.length-1][1]; }
+function diff(a,b){
+  var d = Math.abs(min(a)-min(b));
+  if (!d) return "вместе";
+  var h = Math.floor(d/60), m = d%60;
+  return "разница " + (h? h+" ч " : "") + (m? m+" мин" : "");
+}
+
+function pickDay(){
+  var now = new Date(), dow = now.getDay(), h = now.getHours();
+  var todayIdx = (dow>=1 && dow<=5) ? dow-1 : -1;
+  var idx, label;
+  if (todayIdx>=0 && h<16){ idx = todayIdx; label = "сегодня"; }
+  else if (dow>=1 && dow<=4){ idx = dow; label = "завтра"; }
+  else { idx = 0; label = (dow===5 && h>=16) ? "в понедельник" : "ближайший"; }
+  return {today: todayIdx, idx: idx, label: label};
+}
+
+var chips = document.getElementById("chips"), daysEl = document.getElementById("days");
+var p = document.getElementById("pickup");
+
+function lessonHtml(n, start, end, name, extra){
+  var top = y(start), hgt = y(end)-top;
+  return '<div class="lesson'+(extra?' extra':'')+'" style="top:'+top+'px;height:'+(hgt-3)+'px">' +
+    '<span class="n">'+(extra? start : n+" · "+start+" - "+end)+'</span>'+name+'</div>';
+}
+function colHtml(list, extra, endBoth){
+  var s = "";
+  if (extra) s += lessonHtml(0, extra[0], extra[1], extra[2], true);
+  for (var i=0;i<list.length;i++) s += lessonHtml(i+1, bells[i][0], bells[i][1], list[i]);
+  var e = endOf(list);
+  s += '<div class="end'+(endBoth?' both':'')+'" style="top:'+y(e)+'px"><span>'+e+'</span></div>';
+  return s;
+}
+
+/* статичная часть - таймлайны */
+for (var d=0; d<5; d++){
+  var axis = "", lines = "";
+  for (var h=8; h<=15; h++){
+    var t = h+".00";
+    axis += '<div class="hour" style="top:'+y(t)+'px">'+h+':00</div>';
+    lines += '<div class="hline" style="top:'+y(t)+'px"></div>';
+  }
+  var both = endOf(egor[d])===endOf(gleb[d]);
+  daysEl.innerHTML += '<div class="tl day-view" data-title="'+days[d]+'" hidden>' +
+    '<div class="tl-head"><div></div><div class="e">Егор</div><div class="g">Глеб</div></div>' +
+    '<div class="tl-body" style="height:'+(T1-T0)*PX+'px">'+lines+
+      '<div class="axis">'+axis+'</div>' +
+      '<div class="col e">'+colHtml(egor[d], egorExtra[d], both)+'</div>' +
+      '<div class="col g">'+colHtml(gleb[d], null, both)+'</div>' +
+    '</div></div>';
+}
+
+function selectDay(d){
+  var all = chips.querySelectorAll(".chip");
+  for (var i=0;i<all.length;i++) all[i].setAttribute("aria-selected", String(i===d));
+  var views = daysEl.querySelectorAll(".day-view");
+  for (var j=0;j<views.length;j++) views[j].hidden = j!==d;
+}
+
+/* динамическая часть - зависит от даты */
+var lastKey = "";
+function render(force){
+  var pk = pickDay();
+  var key = pk.today+"|"+pk.idx+"|"+pk.label;
+  if (!force && key===lastKey) return;
+  lastKey = key;
+
+  p.innerHTML = '<div class="pickup-row"><div></div><div>Егор</div><div>Глеб</div><div></div></div>';
+  for (var i=0;i<5;i++){
+    var e = endOf(egor[i]), g = endOf(gleb[i]);
+    p.innerHTML += '<div class="pickup-row'+(e===g?' same':'')+(i===pk.today?' today':'')+'">' +
+      '<div class="d">'+short[i]+'</div>' +
+      '<div class="t e">'+e+'</div><div class="t g">'+g+'</div>' +
+      '<div class="gap">'+diff(e,g)+'</div></div>';
+  }
+
+  chips.innerHTML = "";
+  for (var d=0; d<5; d++){
+    chips.innerHTML += '<button class="chip" role="tab" data-d="'+d+'">'+short[d]+
+      '<small>'+(d===pk.idx ? pk.label : '&nbsp;')+'</small></button>';
+  }
+  selectDay(pk.idx);
+}
+
+chips.addEventListener("click", function(ev){
+  var b = ev.target.closest(".chip"); if(!b) return;
+  selectDay(+b.getAttribute("data-d"));
+});
+
+render(true);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) render(); });
+window.addEventListener("focus", function(){ render(); });
+window.addEventListener("pageshow", function(){ render(); });
+setInterval(render, 60000);
+
+/* звонки */
+var b = document.getElementById("bells");
+for (var k=0;k<bells.length;k++)
+  b.innerHTML += '<div class="bell"><b>'+(k+1)+'</b>'+bells[k][0]+' - '+bells[k][1]+'</div>';
+</script>
+</body>
+</html>

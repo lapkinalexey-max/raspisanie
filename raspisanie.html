@@ -49,6 +49,11 @@
   .pickup-row.same .gap{color:var(--both);font-weight:600}
   .pickup-row.today .d::after{content:"сегодня";display:block;font-family:inherit;font-size:10px;color:var(--muted);margin-top:-2px}
 
+  .lesson.tutor{border-style:dashed;border-width:1px;border-left-width:4px;background:#fff !important}
+  .col.e .lesson.tutor{border-color:var(--egor)}
+  .col.g .lesson.tutor{border-color:var(--gleb)}
+  .chip{font-size:14px;padding:10px 2px}
+
   /* --- дни --- */
   .chips{display:flex;gap:6px;margin:14px 0 12px}
   .chip{
@@ -131,15 +136,16 @@ var bells = [
   ["8.30","9.15"],["9.25","10.10"],["10.20","11.05"],["11.20","12.05"],
   ["12.20","13.05"],["13.15","14.00"],["14.10","14.55"]
 ];
-var days = ["Понедельник","Вторник","Среда","Четверг","Пятница"];
-var short = ["Пн","Вт","Ср","Чт","Пт"];
+var days = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
+var short = ["Пн","Вт","Ср","Чт","Пт","Сб"];
 
 var egor = [
   ["Литературное чтение","Математика","Английский язык","Русский язык","Окружающий мир"],
   ["Труд","Труд","Русский язык","Математика","Литературное чтение"],
   ["Русский язык","Английский язык","Математика","Литературное чтение","Окружающий мир"],
   ["Русский язык","Математика","Литературное чтение","ИЗО","ИЗО"],
-  ["Английский язык","Математика","Физкультура","Русский язык"]
+  ["Английский язык","Математика","Физкультура","Русский язык"],
+  []
 ];
 var egorExtra = { 0: ["8.15","8.30","Разговор о важном"] };
 
@@ -148,11 +154,18 @@ var gleb = [
   ["История","Биология","Английский язык","Геометрия","Литература","Искусство"],
   ["Английский язык","Русский язык","Физика","Русский язык","Информатика (ЦТТ)","Информатика (ЦТТ)"],
   ["Русский язык","География","Литература","История","Алгебра","Английский язык","Физкультура"],
-  ["География","Русский язык","Геометрия","Алгебра","Английский язык","История","Физкультура"]
+  ["География","Русский язык","Геометрия","Алгебра","Английский язык","История","Физкультура"],
+  []
+];
+
+/* репетиторы и допы: [день (Пн=0), начало, конец, что, кто] */
+var tutors = [
+  [0, "18.00", "19.00", "Программирование - репетитор", "g"],
+  [5, "12.00", "13.00", "Программирование - репетитор", "g"]
 ];
 
 function min(t){ var p=t.split("."); return +p[0]*60 + +p[1]; }
-var T0 = min("8.00"), T1 = min("15.00"), PX = 1.5;
+var T0 = min("8.00"), PX = 1.5;
 function y(t){ return (min(t)-T0)*PX; }
 function endOf(list){ return bells[list.length-1][1]; }
 function diff(a,b){
@@ -161,49 +174,72 @@ function diff(a,b){
   var h = Math.floor(d/60), m = d%60;
   return "разница " + (h? h+" ч " : "") + (m? m+" мин" : "");
 }
+function dayEnd(d){
+  var e = min("15.00");
+  for (var i=0;i<tutors.length;i++) if (tutors[i][0]===d) e = Math.max(e, min(tutors[i][2]));
+  if (!egor[d].length && !gleb[d].length){
+    e = min("8.00");
+    for (var j=0;j<tutors.length;j++) if (tutors[j][0]===d) e = Math.max(e, min(tutors[j][2]));
+  }
+  return Math.ceil(e/60)*60;
+}
+function dayStart(d){
+  if (egor[d].length || gleb[d].length) return T0;
+  var s = 24*60;
+  for (var i=0;i<tutors.length;i++) if (tutors[i][0]===d) s = Math.min(s, min(tutors[i][1]));
+  return Math.floor(s/60)*60 - 60;
+}
 
 function pickDay(){
   var now = new Date(), dow = now.getDay(), h = now.getHours();
-  var todayIdx = (dow>=1 && dow<=5) ? dow-1 : -1;
+  var todayIdx = (dow>=1 && dow<=6) ? dow-1 : -1;
   var idx, label;
-  if (todayIdx>=0 && h<16){ idx = todayIdx; label = "сегодня"; }
-  else if (dow>=1 && dow<=4){ idx = dow; label = "завтра"; }
-  else { idx = 0; label = (dow===5 && h>=16) ? "в понедельник" : "ближайший"; }
+  if (dow===0){ idx = 0; label = "завтра"; }
+  else if (h<16){ idx = todayIdx; label = "сегодня"; }
+  else if (dow<=5){ idx = dow; label = "завтра"; }
+  else { idx = 0; label = "в понедельник"; }
   return {today: todayIdx, idx: idx, label: label};
 }
 
 var chips = document.getElementById("chips"), daysEl = document.getElementById("days");
 var p = document.getElementById("pickup");
 
-function lessonHtml(n, start, end, name, extra){
-  var top = y(start), hgt = y(end)-top;
-  return '<div class="lesson'+(extra?' extra':'')+'" style="top:'+top+'px;height:'+(hgt-3)+'px">' +
-    '<span class="n">'+(extra? start : n+" · "+start+" - "+end)+'</span>'+name+'</div>';
+function lessonHtml(n, start, end, name, cls, off){
+  var top = y(start)-off, hgt = y(end)-y(start);
+  return '<div class="lesson'+(cls?' '+cls:'')+'" style="top:'+top+'px;height:'+(hgt-3)+'px">' +
+    '<span class="n">'+(n? n+" · " : "")+start+" - "+end+'</span>'+name+'</div>';
 }
-function colHtml(list, extra, endBoth){
+function colHtml(d, who, list, extra, endBoth, off){
   var s = "";
-  if (extra) s += lessonHtml(0, extra[0], extra[1], extra[2], true);
-  for (var i=0;i<list.length;i++) s += lessonHtml(i+1, bells[i][0], bells[i][1], list[i]);
-  var e = endOf(list);
-  s += '<div class="end'+(endBoth?' both':'')+'" style="top:'+y(e)+'px"><span>'+e+'</span></div>';
+  if (extra) s += lessonHtml(0, extra[0], extra[1], extra[2], "extra", off);
+  for (var i=0;i<list.length;i++) s += lessonHtml(i+1, bells[i][0], bells[i][1], list[i], "", off);
+  if (list.length){
+    var e = endOf(list);
+    s += '<div class="end'+(endBoth?' both':'')+'" style="top:'+(y(e)-off)+'px"><span>'+e+'</span></div>';
+  }
+  for (var k=0;k<tutors.length;k++){
+    var t = tutors[k];
+    if (t[0]===d && t[4]===who) s += lessonHtml(0, t[1], t[2], t[3], "tutor", off);
+  }
   return s;
 }
 
 /* статичная часть - таймлайны */
-for (var d=0; d<5; d++){
+for (var d=0; d<6; d++){
+  var s0 = dayStart(d), s1 = dayEnd(d), off = (s0-T0)*PX;
   var axis = "", lines = "";
-  for (var h=8; h<=15; h++){
+  for (var h=s0/60; h<=s1/60; h++){
     var t = h+".00";
-    axis += '<div class="hour" style="top:'+y(t)+'px">'+h+':00</div>';
-    lines += '<div class="hline" style="top:'+y(t)+'px"></div>';
+    axis += '<div class="hour" style="top:'+(y(t)-off)+'px">'+h+':00</div>';
+    lines += '<div class="hline" style="top:'+(y(t)-off)+'px"></div>';
   }
-  var both = endOf(egor[d])===endOf(gleb[d]);
+  var both = egor[d].length && gleb[d].length && endOf(egor[d])===endOf(gleb[d]);
   daysEl.innerHTML += '<div class="tl day-view" data-title="'+days[d]+'" hidden>' +
     '<div class="tl-head"><div></div><div class="e">Егор</div><div class="g">Глеб</div></div>' +
-    '<div class="tl-body" style="height:'+(T1-T0)*PX+'px">'+lines+
+    '<div class="tl-body" style="height:'+((s1-s0)*PX+8)+'px">'+lines+
       '<div class="axis">'+axis+'</div>' +
-      '<div class="col e">'+colHtml(egor[d], egorExtra[d], both)+'</div>' +
-      '<div class="col g">'+colHtml(gleb[d], null, both)+'</div>' +
+      '<div class="col e">'+colHtml(d, "e", egor[d], egorExtra[d], both, off)+'</div>' +
+      '<div class="col g">'+colHtml(d, "g", gleb[d], null, both, off)+'</div>' +
     '</div></div>';
 }
 
@@ -232,7 +268,7 @@ function render(force){
   }
 
   chips.innerHTML = "";
-  for (var d=0; d<5; d++){
+  for (var d=0; d<6; d++){
     chips.innerHTML += '<button class="chip" role="tab" data-d="'+d+'">'+short[d]+
       '<small>'+(d===pk.idx ? pk.label : '&nbsp;')+'</small></button>';
   }
